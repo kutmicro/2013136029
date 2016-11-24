@@ -43,7 +43,7 @@
 #define CARDCS 4     // Card chip select pin
 // DREQ should be an Int pin, see http://arduino.cc/en/Reference/attachInterrupt
 #define DREQ 3       // VS1053 Data request, ideally an Interrupt pin
-
+// 블루투스를 사용할 때 Serial 함수 참고 http://m.blog.naver.com/yuyyulee/220302731400
 Adafruit_VS1053_FilePlayer musicPlayer = 
   // create breakout-example object!
   Adafruit_VS1053_FilePlayer(BREAKOUT_RESET, BREAKOUT_CS, BREAKOUT_DCS, DREQ, CARDCS);
@@ -70,7 +70,7 @@ void setup() {
 
   // audio playing
   musicPlayer.useInterrupt(VS1053_FILEPLAYER_PIN_INT);  // DREQ int
-  
+  // http://m.blog.naver.com/yuyyulee/220310875023 interrupt 에 대한 방법 설명
   // Play one file, don't return until complete
   Serial.println(F("Playing track 001")); 
   musicPlayer.playFullFile("track001.mp3"); // 파일 번호 지정해주기
@@ -81,7 +81,7 @@ void setup() {
 
 void loop() {
   // File is playing in the background
-  if (musicPlayer.stopped()) { // 현재플레이 하는 파일을 멈
+  if (musicPlayer.stopped()) { // 현재플레이 하는 파일을 멈춤
     Serial.println("Done playing music");
     while (1);
   }
