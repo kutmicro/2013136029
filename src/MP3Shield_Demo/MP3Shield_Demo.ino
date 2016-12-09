@@ -1,31 +1,10 @@
-/**
- * \file MP3Shield_Library_Demo.ino
- *
- * \brief Example sketch of using the MP3Shield Arduino driver, demonstrating all methods and functions.
- * \remarks comments are implemented with Doxygen Markdown format
- *
- * \author Bill Porter
- * \author Michael P. Flaga
- *
- * This sketch listens for commands from a serial terminal (like the Serial
- * Monitor in the Arduino IDE). If it sees 1-9 it will try to play an MP3 file
- * named track00x.mp3 where x is a number from 1 to 9. For eaxmple, pressing
- * 2 will play 'track002.mp3'. A lowe case 's' will stop playing the mp3.
- * 'f' will play an MP3 by calling it by it's filename as opposed to a track
- * number.
- *
- * Sketch assumes you have MP3 files with filenames like "track001.mp3",
- * "track002.mp3", etc on an SD card loaded into the shield.
+/*  김태훈 아두이노 최종 블루투스 스피커 
  */
 
-#include <SPI.h>
-
-//Add the SdFat Libraries
-#include <SdFat.h>
-#include <SdFatUtil.h>
-
-//and the MP3 Shield Library
-#include <SFEMP3Shield.h>
+#include <SPI.h>              // SPI통신을 위한 라이브러리 추가
+#include <SdFat.h>            // SDFat 라이브러리 추가
+#include <SdFatUtil.h>        // SDFatUtil 라이브러리 추가
+#include <SFEMP3Shield.h>     // MP3 Shield 라이브러리 추가
 
 // Below is not needed if interrupt driven. Safe to remove if not using.
 #if defined(USE_MP3_REFILL_MEANS) && USE_MP3_REFILL_MEANS == USE_MP3_Timer1
@@ -34,36 +13,16 @@
   #include <SimpleTimer.h>
 #endif
 
-/**
- * \brief Object instancing the SdFat library.
- *
- * principal object for handling all SdCard functions.
- */
-SdFat sd;
+SdFat sd;                      // SD카드를 읽기위한 변수 설정
+SFEMP3Shield MP3player;        // 플레이를 위한 변수 설정.
 
-/**
- * \brief Object instancing the SFEMP3Shield library.
- *
- * principal object for handling all the attributes, members and functions for the library.
- */
-SFEMP3Shield MP3player;
-byte buffer[1024];
-//------------------------------------------------------------------------------
+void setup() {                 // setup 루프
 
-void setup() {
+  Serial3.begin(9600);        // 블루투스 시리얼속도를 9600으로 설정.
 
-  Serial3.begin(9600); //블루투스 시리얼
-
-  uint8_t result; //result code from some function as to be tested at later time.
+  uint8_t result;              // 기능 테스트를 위한 result 변수 설정.(부호 없는 char을 나타내기 위해 uint8_t를 사용하였음.)
   
-  Serial.begin(115200);
-
-  Serial.print(F("F_CPU = "));
-  Serial.println(F_CPU);
-  Serial.print(F("Free RAM = ")); // available in Version 1.0 F() bases the string to into Flash, to use less SRAM.
-  Serial.print(FreeRam(), DEC);  // FreeRam() is provided by SdFatUtil.h
-  Serial.println(F(" Should be a base line of 1028, on ATmega328 when using INTx"));
-
+  Serial.begin(115200);       // MP3 shield를 시리얼 모니터에 나타내기 위해 115200으로 설정.
 
   //Initialize the SdCard.
   if(!sd.begin(SD_SEL, SPI_FULL_SPEED)) sd.initErrorHalt();
@@ -95,21 +54,7 @@ void setup() {
   help();
 }
 
-//------------------------------------------------------------------------------
-/**
- * \brief Main Loop the Arduino Chip
- *
- * This is called at the end of Arduino kernel's main loop before recycling.
- * And is where the user's serial input of bytes are read and analyzed by
- * parsed_menu.
- *
- * Additionally, if the means of refilling is not interrupt based then the
- * MP3player object is serviced with the availaible function.
- *
- * \note Actual examples of the libraries public functions are implemented in
- * the parse_menu() function.
- */
-void loop() {
+void loop() {                         // loop문 
 
 // Below is only needed if not interrupt driven. Safe to remove if not using.
 #if defined(USE_MP3_REFILL_MEANS) \
@@ -119,108 +64,87 @@ void loop() {
   MP3player.available();
 #endif
 
-  if(Serial3.available()) {
-    parse_menu(Serial3.read()); // get command from serial input
+  if(Serial3.available()) {     // 블루투스에서 보낸 값이 있을 경우
+    parse_menu(Serial3.read()); // parse_menu에 입력값을 전달
   }
 
-  delay(100);
+  delay(100);                    // 0.1초 대기
 }
 
-uint32_t  millis_prv;
+void parse_menu(byte key_command) {          // 명령 값을 byte로 받아와 전달
 
-//------------------------------------------------------------------------------
-/**
- * \brief Decode the Menu.
- *
- * Parses through the characters of the users input, executing corresponding
- * MP3player library functions and features then displaying a brief menu and
- * prompting for next input command.
- */
-void parse_menu(byte key_command) {
+  uint8_t result;                            // 기능 테스트를 위한 result 변수 설정.(부호 없는 char을 나타내기 위해 uint8_t를 사용하였음.)
+  char title[30];                            // 현재의 파일 핸들로부터 Title을 추출하는 버퍼
+  char artist[30];                           // 현재 파일 핸들에서 아티스트 이름을 추출하는 버퍼
+  char album[30];                            // 현재의 파일 핸들에서 앨범 이름을 추출하는 버퍼
 
-  uint8_t result; // result code from some function as to be tested at later time.
-
-  // Note these buffer may be desired to exist globably.
-  // but do take much space if only needed temporarily, hence they are here.
-  char title[30]; // buffer to contain the extract the Title from the current filehandles
-  char artist[30]; // buffer to contain the extract the artist name from the current filehandles
-  char album[30]; // buffer to contain the extract the album name from the current filehandles
-
-  Serial.print(F("Received command: "));
-  Serial.write(key_command);
+  Serial.print(F("Received command: "));    // 명령 값 전달
+  Serial.write(key_command);                // 명령 값을 씀
   Serial.println(F(" "));
 
-  //if s, stop the current track
   if(key_command == 's') {
-    Serial.println(F("Stopping"));
-    MP3player.stopTrack();
-
-  //if 1-9, play corresponding track
-  } else if(key_command >= '1' && key_command <= '9') {
-    //convert ascii numbers to real numbers
-    key_command = key_command - 48;
+     Serial.println(F("Stopping"));          
+     MP3player.stopTrack();                              // 플레이 도중 s가 입력되면 플레이를 멈춤.
+   } 
+   else if(key_command >= '1' && key_command <= '9') {   // 입력 값중 1부터 9사이의 값이 입력되면.
+     key_command = key_command - 48;                     // 아스키 코드로 입력된 값을 실수로 변환함.
 
 #if USE_MULTIPLE_CARDS
-    sd.chvol(); // assign desired sdcard's volume.
+    sd.chvol();                                          // sd카드 초기 볼륨을 설정해줌.
 #endif
-    //tell the MP3 Shield to play a track
-    result = MP3player.playTrack(key_command);
+    result = MP3player.playTrack(key_command);           // MP3 트랙에 입력 값을 전달하여 result에 저장
 
-    //check result, see readme for error codes.
-    if(result != 0) {
+
+    if(result != 0) {                                    // result값을 체크하여 0이 아니면 Error code 발생.
       Serial.print(F("Error code: "));
       Serial.print(result);
       Serial.println(F(" when trying to play track"));
-    } else {
+    } 
+    else {
+      Serial.println(F("Playing:"));                    // 값이 0일 경우 플레이 
 
-      Serial.println(F("Playing:"));
+        MP3player.trackTitle((char*)&title);
+        MP3player.trackArtist((char*)&artist);             // 다음 함수와 인자를 사용하여 트랙 정보를 시리얼 모니터에 나타내기 위한 변수
+        MP3player.trackAlbum((char*)&album);               // 함수는 요청 된 정보를 추출하여 배열에 저장해줌.
 
-      //we can get track info by using the following functions and arguments
-      //the functions will extract the requested information, and put it in the array we pass in
-      MP3player.trackTitle((char*)&title);
-      MP3player.trackArtist((char*)&artist);
-      MP3player.trackAlbum((char*)&album);
+        // 트랙에 정보를 출력해줌.
+        Serial.write((byte*)&title, 30);                  // char* 형으로 입력된 값을 byte* 형으로 형변환 시켜서 출력 
+        Serial.println();
+        Serial.print(F("by:  "));
+        Serial.write((byte*)&artist, 30);
+        Serial.println();
+        Serial.print(F("Album:  "));
+        Serial.write((byte*)&album, 30);
+        Serial.println();
+     }
+  } 
+  else if((key_command == '-') || (key_command == '+')) { // 입력 값이 '-' 나 '+' 가 입력되었을 경우
+    union twobyte mp3_vol;                                // key_command 기존 변수를 생성 왼쪽과 오른쪽의 워드에 더블 바이트로 정의
+    mp3_vol.word = MP3player.getVolume();                 // int16_t의 왼쪽과 오른쪽에 double uint8_t를 반환해줌.
 
-      //print out the arrays of track information
-      Serial.write((byte*)&title, 30);
-      Serial.println();
-      Serial.print(F("by:  "));
-      Serial.write((byte*)&artist, 30);
-      Serial.println();
-      Serial.print(F("Album:  "));
-      Serial.write((byte*)&album, 30);
-      Serial.println();
-    }
-
-  //if +/- to change volume
-  } else if((key_command == '-') || (key_command == '+')) {
-    union twobyte mp3_vol; // create key_command existing variable that can be both word and double byte of left and right.
-    mp3_vol.word = MP3player.getVolume(); // returns a double uint8_t of Left and Right packed into int16_t
-
-    if(key_command == '-') { // note dB is negative
-      // assume equal balance and use byte[1] for math
-      if(mp3_vol.byte[1] >= 254) { // range check
-        mp3_vol.byte[1] = 254;
+    if(key_command == '-') {                              // 커맨드에 -가 입력된 경우.
+      if(mp3_vol.byte[1] >= 254) {                        // 범위를 체크해줌. ( 2부터 254까지 최소 소리크기와 최대 소리크기를 제한해줌. )
+        mp3_vol.byte[1] = 254;                            // 크기가 254보다 큰 경우 254를 저장함.
       } else {
-        mp3_vol.byte[1] += 2; // keep it simpler with whole dB's
+        mp3_vol.byte[1] += 2;                             // 그 이외의 값인 경우 -가 입력될 때마다 byte값을 2씩 증가시켜 저장함.
       }
-    } else {
-      if(mp3_vol.byte[1] <= 2) { // range check
-        mp3_vol.byte[1] = 2;
-      } else {
-        mp3_vol.byte[1] -= 2;
+    } else {                                              // 커맨드에 +가 입력된 경우.
+      if(mp3_vol.byte[1] <= 2) {                          // 범위를 체크해줌. ( 2부터 254까지 최소 소리크기와 최대 소리크기를 제한해줌. )
+        mp3_vol.byte[1] = 2;                              // 크기가 2보다 작을 경우 2를 저장해줌.
+      } else {                                       
+        mp3_vol.byte[1] -= 2;                             // 그 이외의 값인 경우 +가 입력될 때마다 byte값을 2씩 감소시켜 저장함.
       }
     }
-    // push byte[1] into both left and right assuming equal balance.
-    MP3player.setVolume(mp3_vol.byte[1], mp3_vol.byte[1]); // commit new volume
+    // byte[1] 의 값을 왼쪽과 오른쪽으로 균등 한 균형을 가정하여 입력을 넣어줌.
+    
+    MP3player.setVolume(mp3_vol.byte[1], mp3_vol.byte[1]); // 새로운 볼륨을 커밋해줌.
     Serial.print(F("Volume changed to -"));
-    Serial.print(mp3_vol.byte[1]>>1, 1);
+    Serial.print(mp3_vol.byte[1]>>1, 1);                  // 왼쪽 시프트를 사용하여 값을 출력.
     Serial.println(F("[dB]"));
-
-  //if < or > to change Play Speed
-  } else if((key_command == '>') || (key_command == '<')) {
-    uint16_t playspeed = MP3player.getPlaySpeed(); // create key_command existing variable
-    // note playspeed of Zero is equal to ONE, normal speed.
+  } 
+  //  >와 < 가 입력되었을 시 음악의 재생 속도를 변경시켜줌.
+  else if((key_command == '>') || (key_command == '<')) {
+    uint16_t playspeed = MP3player.getPlaySpeed();               // playspeed라는 변수정의해줌.
     if(key_command == '>') { // note dB is negative
       // assume equal balance and use byte[1] for math
       if(playspeed >= 254) { // range check
@@ -274,10 +198,6 @@ void parse_menu(byte key_command) {
       Serial.println(F("Busy Playing Files, try again later."));
     }
 
-  /* Get and Display the Audio Information */
-  } else if(key_command == 'i') {
-    MP3player.getAudioInfo();
-
   } else if(key_command == 'p') {
     if( MP3player.getState() == playback) {
       MP3player.pauseMusic();
@@ -299,82 +219,9 @@ void parse_menu(byte key_command) {
       MP3player.disableTestSineWave();
       Serial.println(F("Disabling Test Sine Wave"));
     }
-
-  } else if(key_command == 'S') {
-    Serial.println(F("Current State of VS10xx is."));
-    Serial.print(F("isPlaying() = "));
-    Serial.println(MP3player.isPlaying());
-
-    Serial.print(F("getState() = "));
-    switch (MP3player.getState()) {
-    case uninitialized:
-      Serial.print(F("uninitialized"));
-      break;
-    case initialized:
-      Serial.print(F("initialized"));
-      break;
-    case deactivated:
-      Serial.print(F("deactivated"));
-      break;
-    case loading:
-      Serial.print(F("loading"));
-      break;
-    case ready:
-      Serial.print(F("ready"));
-      break;
-    case playback:
-      Serial.print(F("playback"));
-      break;
-    case paused_playback:
-      Serial.print(F("paused_playback"));
-      break;
-    case testing_memory:
-      Serial.print(F("testing_memory"));
-      break;
-    case testing_sinewave:
-      Serial.print(F("testing_sinewave"));
-      break;
-    }
-    Serial.println();
-
-   } else if(key_command == 'b') {
-    Serial.println(F("Playing Static MIDI file."));
-    MP3player.SendSingleMIDInote();
-    Serial.println(F("Ended Static MIDI file."));
-
-#if !defined(__AVR_ATmega32U4__)
-  } else if(key_command == 'm') {
-      uint16_t teststate = MP3player.memoryTest();
-    if(teststate == -1) {
-      Serial.println(F("Un-Available while playing music or chip in reset."));
-    } else if(teststate == 2) {
-      teststate = MP3player.disableTestSineWave();
-      Serial.println(F("Un-Available while Sine Wave Test"));
-    } else {
-      Serial.print(F("Memory Test Results = "));
-      Serial.println(teststate, HEX);
-      Serial.println(F("Result should be 0x83FF."));
-      Serial.println(F("Reset is needed to recover to normal operation"));
-    }
-
-  } else if(key_command == 'e') {
-    uint8_t earspeaker = MP3player.getEarSpeaker();
-    if(earspeaker >= 3){
-      earspeaker = 0;
-    } else {
-      earspeaker++;
-    }
-    MP3player.setEarSpeaker(earspeaker); // commit new earspeaker
-    Serial.print(F("earspeaker to "));
-    Serial.println(earspeaker, DEC);
-
-  } else if(key_command == 'r') {
+  }
+  else if(key_command == 'r') {
     MP3player.resumeMusic(2000);
-
-  } else if(key_command == 'R') {
-    MP3player.stopTrack();
-    MP3player.vs_init();
-    Serial.println(F("Reseting VS10xx chip"));
 
   } else if(key_command == 'g') {
     int32_t offset_ms = 20000; // Note this is just an example, try your own number.
@@ -399,134 +246,11 @@ void parse_menu(byte key_command) {
       Serial.print(result);
       Serial.println(F(" when trying to skip track"));
     }
-
-  } else if(key_command == 'O') {
-    MP3player.end();
-    Serial.println(F("VS10xx placed into low power reset mode."));
-
-  } else if(key_command == 'o') {
-    MP3player.begin();
-    Serial.println(F("VS10xx restored from low power reset mode."));
-
-  } else if(key_command == 'D') {
-    uint16_t diff_state = MP3player.getDifferentialOutput();
-    Serial.print(F("Differential Mode "));
-    if(diff_state == 0) {
-      MP3player.setDifferentialOutput(1);
-      Serial.println(F("Enabled."));
-    } else {
-      MP3player.setDifferentialOutput(0);
-      Serial.println(F("Disabled."));
-    }
-
-  } else if(key_command == 'V') {
-    MP3player.setVUmeter(1);
-    Serial.println(F("Use \"No line ending\""));
-    Serial.print(F("VU meter = "));
-    Serial.println(MP3player.getVUmeter());
-    Serial.println(F("Hit Any key to stop."));
-
-    while(!Serial.available()) {
-      union twobyte vu;
-      vu.word = MP3player.getVUlevel();
-      Serial.print(F("VU: L = "));
-      Serial.print(vu.byte[1]);
-      Serial.print(F(" / R = "));
-      Serial.print(vu.byte[0]);
-      Serial.println(" dB");
-      delay(1000);
-    }
-    Serial.read();
-
-    MP3player.setVUmeter(0);
-    Serial.print(F("VU meter = "));
-    Serial.println(MP3player.getVUmeter());
-
-  } else if(key_command == 'T') {
-    uint16_t TrebleFrequency = MP3player.getTrebleFrequency();
-    Serial.print(F("Former TrebleFrequency = "));
-    Serial.println(TrebleFrequency, DEC);
-    if (TrebleFrequency >= 15000) { // Range is from 0 - 1500Hz
-      TrebleFrequency = 0;
-    } else {
-      TrebleFrequency += 1000;
-    }
-    MP3player.setTrebleFrequency(TrebleFrequency);
-    Serial.print(F("New TrebleFrequency = "));
-    Serial.println(MP3player.getTrebleFrequency(), DEC);
-
-  } else if(key_command == 'E') {
-    int8_t TrebleAmplitude = MP3player.getTrebleAmplitude();
-    Serial.print(F("Former TrebleAmplitude = "));
-    Serial.println(TrebleAmplitude, DEC);
-    if (TrebleAmplitude >= 7) { // Range is from -8 - 7dB
-      TrebleAmplitude = -8;
-    } else {
-      TrebleAmplitude++;
-    }
-    MP3player.setTrebleAmplitude(TrebleAmplitude);
-    Serial.print(F("New TrebleAmplitude = "));
-    Serial.println(MP3player.getTrebleAmplitude(), DEC);
-
-  } else if(key_command == 'B') {
-    uint16_t BassFrequency = MP3player.getBassFrequency();
-    Serial.print(F("Former BassFrequency = "));
-    Serial.println(BassFrequency, DEC);
-    if (BassFrequency >= 150) { // Range is from 20hz - 150hz
-      BassFrequency = 0;
-    } else {
-      BassFrequency += 10;
-    }
-    MP3player.setBassFrequency(BassFrequency);
-    Serial.print(F("New BassFrequency = "));
-    Serial.println(MP3player.getBassFrequency(), DEC);
-
-  } else if(key_command == 'C') {
-    uint16_t BassAmplitude = MP3player.getBassAmplitude();
-    Serial.print(F("Former BassAmplitude = "));
-    Serial.println(BassAmplitude, DEC);
-    if (BassAmplitude >= 15) { // Range is from 0 - 15dB
-      BassAmplitude = 0;
-    } else {
-      BassAmplitude++;
-    }
-    MP3player.setBassAmplitude(BassAmplitude);
-    Serial.print(F("New BassAmplitude = "));
-    Serial.println(MP3player.getBassAmplitude(), DEC);
-
-  } else if(key_command == 'M') {
-    uint16_t monostate = MP3player.getMonoMode();
-    Serial.print(F("Mono Mode "));
-    if(monostate == 0) {
-      MP3player.setMonoMode(1);
-      Serial.println(F("Enabled."));
-    } else {
-      MP3player.setMonoMode(0);
-      Serial.println(F("Disabled."));
-    }
-#endif
-
-  } else if(key_command == 'h') {
+   } 
+  else if(key_command == 'h') {
     help();
   }
 
-  // print prompt after key stroke has been processed.
-  Serial.print(F("Time since last command: "));  
-  Serial.println((float) (millis() -  millis_prv)/1000, 2);  
-  millis_prv = millis();
-  Serial.print(F("Enter s,1-9,+,-,>,<,f,F,d,i,p,t,S,b"));
-#if !defined(__AVR_ATmega32U4__)
-  Serial.print(F(",m,e,r,R,g,k,O,o,D,V,B,C,T,E,M:"));
-#endif
-  Serial.println(F(",h :"));
-}
-
-//------------------------------------------------------------------------------
-/**
- * \brief Print Help Menu.
- *
- * Prints a full menu of the commands available along with descriptions.
- */
 void help() {
   Serial.println(F("Arduino SFEMP3Shield Library Example:"));
   Serial.println(F(" courtesy of Bill Porter & Michael P. Flaga"));
