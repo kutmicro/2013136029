@@ -250,6 +250,7 @@ void parse_menu(byte key_command) {          // 명령 값을 byte로 받아와 
   else if(key_command == 'h') {
     help();
   }
+}
 
 void help() {
   Serial.println(F("Arduino SFEMP3Shield Library Example:"));
