@@ -7,6 +7,7 @@
 
 SdFat sd;                      // SD카드를 읽기위한 변수 설정
 SFEMP3Shield MP3player;        // 플레이를 위한 변수 설정.
+char trackName[] = "track001.mp3";
 
 void setup() {                 // setup 루프
 
@@ -22,7 +23,6 @@ void loop() {                         // loop문
   if(Serial3.available()) {     // 블루투스에서 보낸 값이 있을 경우
     parse_menu(Serial3.read()); // parse_menu에 입력값을 전달
   }
-
   delay(100);                    // 0.1초 대기
 }
 
@@ -32,14 +32,25 @@ void parse_menu(byte key_command) {          // 명령 값을 byte로 받아와 
 
   if(key_command == 's') {
      MP3player.stopTrack();                              // 플레이 도중 s가 입력되면 플레이를 멈춤.
-   } 
+   }
+  else if(key_command == 'r') {
+    for(int i = 1; i<= 10; i++) {
+      int trackNumber = random(1,10);
+      MP3player.playTrack(trackNumber);
+    }
+  }
+  else if(key_command == 't') {
+    for(int i = 1; i <= 10; i++) {
+      MP3player.playTrack(i);
+    }
+  }
    else if(key_command >= '1' && key_command <= '9') {   // 입력 값중 1부터 9사이의 값이 입력되면.
      key_command = key_command - 48;                     // 아스키 코드로 입력된 값을 실수로 변환함.
 
 #if USE_MULTIPLE_CARDS
     sd.chvol();                                          // sd카드 초기 볼륨을 설정해줌.
 #endif
-    MP3player.playTrack(key_command);           // MP3 트랙에 입력 값을 전달하여 result에 저장
+    MP3player.playTrack(key_command);           // MP3 트랙에 입력 값을 전달
   }
   else if((key_command == '-') || (key_command == '+')) { // 입력 값이 '-' 나 '+' 가 입력되었을 경우
     union twobyte mp3_vol;                                // key_command 기존 변수를 생성 왼쪽과 오른쪽의 워드에 더블 바이트로 정의
